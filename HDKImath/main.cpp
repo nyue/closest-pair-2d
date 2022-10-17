@@ -11,30 +11,6 @@
 
 using namespace std;
 
-#ifdef ENABLE_OLD_POINT
-
-// point stuff START
-class Point {
-  public:
-    // only index 0 and 1 of the vector for the 2d problem
-    std::vector<double> coordinate;
-    Point(std::vector<double> coordinate) {
-      this->coordinate = coordinate;
-    }
-
-    Point(){}
-    std::string toString() {
-      return "(" +  std::to_string(coordinate[0]) + "," + std::to_string(coordinate[1]) + ")";
-    }
-
-    friend std::ostream& operator<<(std::ostream &strm, const Point &a) {
-      return strm << "(" << a.coordinate[0] << "," << a.coordinate[1] << ")";
-    }
-};
-// point stuff END
-
-#endif // ENABLE_OLD_POINT
-
 bool compareX(const Imath::V2f& p, const Imath::V2f& q) {
 	return p[0] < q[0];
 }
@@ -44,10 +20,76 @@ bool compareY(const Imath::V2f& p, const Imath::V2f& q) {
 }
 
 
-
 class MyClosestPair {
-
 public:
+
+	typedef std::pair<std::pair<Imath::V2f, Imath::V2f>, float> DResult;
+
+	DResult closestPair(vector<Imath::V2f>& L) {
+		std::sort(L.begin(), L.end(), compareX);
+		vector<Imath::V2f> res_points;
+		DResult d, d1, d2;
+		int n = L.size();
+		int mid_point = n / 2;
+		float mid = L[mid_point][0];
+		if (n <= 1) {
+			return DResult
+					{std::pair<Imath::V2f, Imath::V2f>{Imath::V2f(), Imath::V2f()}, std::numeric_limits<float>::infinity()};
+		} else if (n == 2) {
+			return dist(L[0], L[1]);
+		}
+		// merge_sort(L, true);
+		vector<Imath::V2f> L1, L2, L_strip;
+		for (int i = 0; i < n; i++) {
+			if (i < mid_point) {
+				L1.push_back(L[i]);
+			} else {
+				L2.push_back(L[i]);
+			}
+		}
+		d1 = closestPair(L1);
+		d2 = closestPair(L2);
+		d = d1.second < d2.second ? d1 : d2;
+
+		for (int i = L1.size() - 1; i >= 0; i--) {
+			if (L1[i][0] > mid - d.second) {
+				L_strip.push_back(L1[i]);
+			}
+		}
+		for (int i = 0; i < L2.size(); i++) {
+			if (L2[i][0] < mid + d.second) {
+				L_strip.push_back(L2[i]);
+			}
+		}
+		sort(L_strip.begin(), L_strip.end(), compareY);
+		L = merge(L1, L2, false);
+		if (L_strip.size() <= 1) {
+			return d;
+		} else {
+			DResult d_strip = DResult
+					{std::pair<Imath::V2f, Imath::V2f>{Imath::V2f(), Imath::V2f()}, std::numeric_limits<float>::infinity()};
+			for (int i = 0; i < L_strip.size(); i++) {
+				// for (int j = i + 1; j < L_strip.size(); j++) {
+				for (int j = i + 1; j < i + 8; j++) {
+					if (j >= L_strip.size()) {
+						break;
+					}
+					DResult dist_successor = dist(L_strip[i], L_strip[j]);
+					d_strip = dist_successor.second < d_strip.second ? dist_successor : d_strip;
+				}
+			}
+			return d.second < d_strip.second ? d : d_strip;
+		}
+	}
+
+
+	void print_points(const vector<Imath::V2f>& points) {
+		for (Imath::V2f p: points) {
+			std::cout << p;
+		}
+		std::cout << endl;
+	}
+private:
 
 	vector<Imath::V2f> merge_sort(vector<Imath::V2f> &L, bool x) {
 		if (L.size() <= 1) {
@@ -91,79 +133,14 @@ public:
 		return res;
 	}
 
-	typedef std::pair<std::pair<Imath::V2f, Imath::V2f>, double> DResult;
-
 	DResult dist(const Imath::V2f& p, const Imath::V2f& q) {
-		double xDiff = p[0] - q[0];
-		double yDiff = p[1] - q[1];
-		return std::pair<std::pair<Imath::V2f, Imath::V2f>, double>
+		float xDiff = p[0] - q[0];
+		float yDiff = p[1] - q[1];
+		return std::pair<std::pair<Imath::V2f, Imath::V2f>, float>
 		{std::pair<Imath::V2f, Imath::V2f> {p, q}, sqrt(xDiff * xDiff + yDiff * yDiff)};
 	}
 
-	DResult closestPair(vector<Imath::V2f>& L) {
-		std::sort(L.begin(), L.end(), compareX);
-		vector<Imath::V2f> res_points;
-		DResult d, d1, d2;
-		int n = L.size();
-		int mid_point = n / 2;
-		double mid = L[mid_point][0];
-		if (n <= 1) {
-			return DResult
-					{std::pair<Imath::V2f, Imath::V2f>{Imath::V2f(), Imath::V2f()}, std::numeric_limits<double>::infinity()};
-		} else if (n == 2) {
-			return dist(L[0], L[1]);
-		}
-		// merge_sort(L, true);
-		vector<Imath::V2f> L1, L2, L_strip;
-		for (int i = 0; i < n; i++) {
-			if (i < mid_point) {
-				L1.push_back(L[i]);
-			} else {
-				L2.push_back(L[i]);
-			}
-		}
-		d1 = closestPair(L1);
-		d2 = closestPair(L2);
-		d = d1.second < d2.second ? d1 : d2;
 
-		for (int i = L1.size() - 1; i >= 0; i--) {
-			if (L1[i][0] > mid - d.second) {
-				L_strip.push_back(L1[i]);
-			}
-		}
-		for (int i = 0; i < L2.size(); i++) {
-			if (L2[i][0] < mid + d.second) {
-				L_strip.push_back(L2[i]);
-			}
-		}
-		sort(L_strip.begin(), L_strip.end(), compareY);
-		L = merge(L1, L2, false);
-		if (L_strip.size() <= 1) {
-			return d;
-		} else {
-			DResult d_strip = DResult
-					{std::pair<Imath::V2f, Imath::V2f>{Imath::V2f(), Imath::V2f()}, std::numeric_limits<double>::infinity()};
-			for (int i = 0; i < L_strip.size(); i++) {
-				// for (int j = i + 1; j < L_strip.size(); j++) {
-				for (int j = i + 1; j < i + 8; j++) {
-					if (j >= L_strip.size()) {
-						break;
-					}
-					DResult dist_successor = dist(L_strip[i], L_strip[j]);
-					d_strip = dist_successor.second < d_strip.second ? dist_successor : d_strip;
-				}
-			}
-			return d.second < d_strip.second ? d : d_strip;
-		}
-	}
-
-
-	void print_points(const vector<Imath::V2f>& points) {
-		for (Imath::V2f p: points) {
-			std::cout << p;
-		}
-		std::cout << endl;
-	}
 }; // MyClosest Pair
 
 /**
@@ -181,11 +158,11 @@ int main() {
   vector<Imath::V2f> points;
   clock_t tStart = clock();
   for (int i = 0; i != point_num; i++) {
-    vector<double> coor{distr(generator), distr(generator)};
+    vector<float> coor{(float)distr(generator), (float)distr(generator)};
     points.push_back(Imath::V2f(coor[0],coor[1]));
   }
-  // printf("Time taken to initialize: \033[0;32m%fs\033[0m\n\n", (double)(clock() - tStart)/CLOCKS_PER_SEC);
-  std::cout << hboost::format("Time taken to initialize: \033[0;32m%fs\033[0m\n\n") % ((double)(clock() - tStart)/CLOCKS_PER_SEC);
+  // printf("Time taken to initialize: \033[0;32m%fs\033[0m\n\n", (float)(clock() - tStart)/CLOCKS_PER_SEC);
+  std::cout << hboost::format("Time taken to initialize: \033[0;32m%fs\033[0m\n\n") % ((float)(clock() - tStart)/CLOCKS_PER_SEC);
   // printf("\nThere are \033[1;31m%d\033[0m points, whose coordinates are in the interval \033[1;31m[%d, %d]\033[0m.\n\n", point_num, rangeS, rangeE);
   std::cout << hboost::format("\nThere are \033[1;31m%d\033[0m points, whose coordinates are in the interval \033[1;31m[%d, %d]\033[0m.\n\n") % point_num % rangeS % rangeE;
   tStart = clock();
@@ -195,8 +172,8 @@ int main() {
   //        res.first.first.toString().c_str(), res.first.second.toString().c_str(), res.second);
   std::cout << hboost::format("The closest pair of points is: \033[0;33m%s\033[0m and \033[0;33m%s\033[0m, with the distance \033[1;31m%f\033[0m.\n\n")
           % res.first.first % res.first.second % res.second;
-  // printf("Time taken: \033[0;32m%fs\033[0m\n\n", (double)(clock() - tStart)/CLOCKS_PER_SEC);
-  std::cout << hboost::format("Time taken: \033[0;32m%fs\033[0m\n\n") % ((double)(clock() - tStart)/CLOCKS_PER_SEC);
+  // printf("Time taken: \033[0;32m%fs\033[0m\n\n", (float)(clock() - tStart)/CLOCKS_PER_SEC);
+  std::cout << hboost::format("Time taken: \033[0;32m%fs\033[0m\n\n") % ((float)(clock() - tStart)/CLOCKS_PER_SEC);
   std::ofstream file, fres;
   file.open("plot.txt");
   for (Imath::V2f p: points) {
