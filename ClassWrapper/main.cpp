@@ -24,23 +24,25 @@ class Point {
     std::string toString() {
       return "(" +  std::to_string(coordinate[0]) + "," + std::to_string(coordinate[1]) + ")";
     }
-    friend bool operator== (const Point& p1, const Point& p2);
+    // friend bool operator== (const Point& p1, const Point& p2);
     friend std::ostream& operator<<(std::ostream &strm, const Point &a) {
       return strm << "(" << a.coordinate[0] << "," << a.coordinate[1] << ")";
     }
 };
 
+/*
 inline bool operator== (const Point& p1, const Point& p2) {
+	std::cout << "operator==" << std::endl;
   return p1.coordinate == p2.coordinate;
 }
-
+*/
 // point stuff END
 
-double compareX(Point p, Point q) {
+double compareX(const Point& p, const Point& q) {
 	return p.coordinate[0] < q.coordinate[0];
 }
 
-double compareY(Point p, Point q) {
+double compareY(const Point& p, const Point& q) {
 	return p.coordinate[1] < q.coordinate[1];
 }
 
@@ -105,7 +107,7 @@ public:
 		void print_points(vector<Point> points);
 	 */
 
-	DResult dist(Point p, Point q) {
+	DResult dist(const Point& p, const Point& q) {
 		double xDiff = p.coordinate[0] - q.coordinate[0];
 		double yDiff = p.coordinate[1] - q.coordinate[1];
 		return std::pair<std::pair<Point, Point>, double>
@@ -173,7 +175,7 @@ public:
 	}
 
 
-	void print_points(vector<Point> points) {
+	void print_points(const vector<Point>& points) {
 		for (Point p: points) {
 			std::cout << p;
 		}
@@ -188,7 +190,7 @@ public:
  $ g++ -c merge_sort.cpp 2d_problem.cpp main.cpp && g++ merge_sort.o 2d_problem.o main.o -o my_program && ./my_program 
  * */
 int main() {
-  int point_num = 100000;
+  int point_num = 10000;
   int rangeS = 0;
   int rangeE = 100000;
   srand(time(0));
