@@ -179,7 +179,9 @@ int main() {
 	std::cout << hboost::format("\nThere are \033[1;31m%d\033[0m points, whose coordinates are in the interval \033[1;31m[%d, %d]\033[0m.\n\n") % point_num % rangeS % rangeE;
 	tStart = clock();
 	MyClosestPair cp;
+	std::cout << hboost::format("\npi.size(BEFORE) = %1%") % pi.size() << std::endl;
 	MyClosestPair::DResult res = cp.closestPair(pi);
+	std::cout << hboost::format("\npi.size(AFTER) = %1%") % pi.size() << std::endl;
 	//printf("The closest pair of points is: \033[0;33m%s\033[0m and \033[0;33m%s\033[0m, with the distance \033[1;31m%f\033[0m.\n\n",
 	//        res.first.first.toString().c_str(), res.first.second.toString().c_str(), res.second);
 	std::cout << hboost::format("The closest pair of points is: \033[0;33m%s\033[0m and \033[0;33m%s\033[0m, with the distance \033[1;31m%f\033[0m.\n\n")
