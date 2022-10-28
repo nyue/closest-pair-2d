@@ -9,11 +9,5 @@ if (CMAKE_BUILD_TYPE MATCHES "Debug")
   SET (GCOVLIB "-lgcov")
 endif()
 
-add_executable(indexing
-  main.cpp
-  )
-
-target_link_libraries(indexing
-  Houdini
-  ${GCOVLIB}
-  )
+add_subdirectory(vector)
+add_subdirectory(list)
