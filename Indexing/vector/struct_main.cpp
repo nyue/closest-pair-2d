@@ -12,16 +12,37 @@
 using namespace std;
 
 typedef std::vector<size_t> PointIndicesType;
-typedef std::vector<Imath::V2f> PointArrayType;
+class OSDFaceData {
+public:
+	OSDFaceData()
+	:_index(-1)
+	{
+	}
+	void init(int face_index, const Imath::Box2f& face_bbox)
+	{
+		_index = face_index;
+		_bbox = face_bbox;
+		_centroid = 0.5f*(_bbox.max-_bbox.min);
+	}
+	const Imath::V2f& centroid() const {
+		assert(_index>=0);
+		return _centroid;
+	}
+protected:
+	int _index; // mimic OpenSubdiv refiner face indices which is a Vtr::Index of type `int`
+	Imath::Box2f _bbox;
+	Imath::V2f _centroid;
+};
+typedef std::vector<OSDFaceData> OSDFaceDataArrayType;
 
-PointArrayType globalPA;
+OSDFaceDataArrayType globalPA;
 
 static bool compareX(const size_t& p, const size_t& q) {
-	return globalPA[p].x < globalPA[q].x;
+	return globalPA[p].centroid().x < globalPA[q].centroid().x;
 }
 
 static bool compareY(const size_t& p, const size_t& q) {
-	return globalPA[p].y < globalPA[q].y;
+	return globalPA[p].centroid().y < globalPA[q].centroid().y;
 }
 
 class MyClosestPair {
@@ -35,7 +56,7 @@ public:
 		DResult d, d1, d2;
 		int n = L.size();
 		int mid_point = n / 2;
-		float mid = globalPA[L[mid_point]][0];
+		float mid = globalPA[L[mid_point]].centroid()[0];
 		if (n <= 1) {
 			return DResult
 					{std::pair<size_t, size_t>{0, 0}, std::numeric_limits<float>::infinity()};
@@ -56,12 +77,12 @@ public:
 		d = d1.second < d2.second ? d1 : d2;
 
 		for (int i = L1.size() - 1; i >= 0; i--) {
-			if (globalPA[L1[i]][0] > mid - d.second) {
+			if (globalPA[L1[i]].centroid()[0] > mid - d.second) {
 				L_strip.push_back(L1[i]);
 			}
 		}
 		for (int i = 0; i < L2.size(); i++) {
-			if (globalPA[L2[i]][0] < mid + d.second) {
+			if (globalPA[L2[i]].centroid()[0] < mid + d.second) {
 				L_strip.push_back(L2[i]);
 			}
 		}
@@ -89,7 +110,7 @@ public:
 
 	void print_points(const PointIndicesType& points) {
 		for (size_t p: points) {
-			std::cout << globalPA[p];
+			std::cout << globalPA[p].centroid();
 		}
 		std::cout << endl;
 	}
@@ -124,7 +145,7 @@ private:
 		int L1_ptr = 0;
 		int L2_ptr = 0;
 		while (L1_ptr < L1.size() and L2_ptr < L2.size()) {
-			if (globalPA[L1[L1_ptr]][coor] <= globalPA[L2[L2_ptr]][coor]) {
+			if (globalPA[L1[L1_ptr]].centroid()[coor] <= globalPA[L2[L2_ptr]].centroid()[coor]) {
 				res.push_back(L1[L1_ptr++]);
 			} else {
 				res.push_back(L2[L2_ptr++]);
@@ -142,8 +163,8 @@ private:
 		// float xDiff = p[0] - q[0];
 		// float yDiff = p[1] - q[1];
 
-		float xDiff = globalPA[p][0] - globalPA[q][0];
-		float yDiff = globalPA[p][1] - globalPA[q][1];
+		float xDiff = globalPA[p].centroid()[0] - globalPA[q].centroid()[0];
+		float yDiff = globalPA[p].centroid()[1] - globalPA[q].centroid()[1];
 
 		return std::pair<std::pair<size_t, size_t>, float>
 		{std::pair<size_t, size_t> {p, q}, sqrt(xDiff * xDiff + yDiff * yDiff)};
@@ -160,7 +181,7 @@ int main() {
 	int point_num = 100000;
 	PointIndicesType pi(point_num);
 	int rangeS = 0;
-	int rangeE = 100000;
+	int rangeE = 1;
 	srand(time(0));
 	std::random_device rand_dev;
 	std::mt19937 generator(rand_dev());
@@ -168,9 +189,11 @@ int main() {
 	// vector<Imath::V2f> points;
 	clock_t tStart = clock();
 	for (int i = 0; i != point_num; i++) {
-		vector<float> coor{(float)distr(generator), (float)distr(generator)};
+		// vector<float> coor{(float)distr(generator), (float)distr(generator)};
 		// points.push_back(Imath::V2f(coor[0],coor[1]));
-		globalPA.push_back(Imath::V2f(coor[0],coor[1]));
+		// globalPA.push_back(Imath::V2f(coor[0],coor[1]));
+		globalPA.push_back(OSDFaceData());
+		globalPA.back().init(i, Imath::Box2f(Imath::V2f((float)distr(generator), (float)distr(generator)),Imath::V2f((float)distr(generator), (float)distr(generator))));
 		pi[i] = i;
 	}
 	// printf("Time taken to initialize: \033[0;32m%fs\033[0m\n\n", (float)(clock() - tStart)/CLOCKS_PER_SEC);
@@ -189,14 +212,14 @@ int main() {
 	// printf("Time taken: \033[0;32m%fs\033[0m\n\n", (float)(clock() - tStart)/CLOCKS_PER_SEC);
 	std::cout << hboost::format("Time taken: \033[0;32m%fs\033[0m\n\n") % ((float)(clock() - tStart)/CLOCKS_PER_SEC);
 	std::ofstream file, fres;
-	file.open("plot.txt");
+	file.open("plot_struct.txt");
 	for (size_t p: pi) {
-		file << globalPA[p][0] << "  " << globalPA[p][1] << std::endl;
+		file << globalPA[p].centroid()[0] << "  " << globalPA[p].centroid()[1] << std::endl;
 	}
 	file.close();
-	fres.open("res.txt");
-	fres << globalPA[res.first.first][0] << "  " << globalPA[res.first.first][1] << std::endl;
-	fres << globalPA[res.first.second][0] << "  " << globalPA[res.first.second][1] << std::endl;
+	fres.open("res_struct.txt");
+	fres << globalPA[res.first.first].centroid()[0] << "  " << globalPA[res.first.first].centroid()[1] << std::endl;
+	fres << globalPA[res.first.second].centroid()[0] << "  " << globalPA[res.first.second].centroid()[1] << std::endl;
 	fres.close();
 	// HDK's Qt breaks gnuplot
 	// system("gnuplot -e \"plot 'plot.txt' using 1:2 pt 7 ps 1 title 'Points', 'res.txt' using 1:2 pt 7 ps 1 lc rgb 'red' title 'Result'; pause -1\"");
