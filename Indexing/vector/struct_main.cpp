@@ -8,6 +8,7 @@
 #include <UT/UT_Vector2.h> // Ensure we are using HDK stuff
 #include <Imath/ImathBoxAlgo.h> // This will include both ImathBox.h and ImathVec.h
 #include <hboost/format.hpp>
+#include <hboost/bind.hpp>
 
 using namespace std;
 
@@ -37,21 +38,21 @@ typedef std::vector<OSDFaceData> OSDFaceDataArrayType;
 
 OSDFaceDataArrayType globalPA;
 
-static bool compareX(const size_t& p, const size_t& q) {
-	return globalPA[p].centroid().x < globalPA[q].centroid().x;
-}
-
-static bool compareY(const size_t& p, const size_t& q) {
-	return globalPA[p].centroid().y < globalPA[q].centroid().y;
-}
-
 class MyClosestPair {
+	bool compareX(const size_t& p, const size_t& q) {
+		return globalPA[p].centroid().x < globalPA[q].centroid().x;
+	}
+
+	bool compareY(const size_t& p, const size_t& q) {
+		return globalPA[p].centroid().y < globalPA[q].centroid().y;
+	}
+
 public:
 
 	typedef std::pair<std::pair<size_t, size_t>, float> DResult;
 
 	DResult closestPair(PointIndicesType& L) {
-		std::sort(L.begin(), L.end(), compareX);
+		std::sort(L.begin(), L.end(), hboost::bind(&MyClosestPair::compareX, this, _1, _2));
 		PointIndicesType res_points;
 		DResult d, d1, d2;
 		int n = L.size();
@@ -86,7 +87,7 @@ public:
 				L_strip.push_back(L2[i]);
 			}
 		}
-		sort(L_strip.begin(), L_strip.end(), compareY);
+		sort(L_strip.begin(), L_strip.end(), hboost::bind(&MyClosestPair::compareY, this, _1, _2));
 		L = merge(L1, L2, false);
 		if (L_strip.size() <= 1) {
 			return d;
