@@ -3,6 +3,7 @@
 #include <random>
 #include <fstream>
 #include <algorithm>
+#include <iterator>     // std::ostream_iterator
 
 // HDK/Imath stuff
 #include <UT/UT_Vector2.h> // Ensure we are using HDK stuff
@@ -13,6 +14,8 @@
 using namespace std;
 
 typedef std::vector<int> PointIndicesType;
+typedef std::pair<int, int> IndicesPairType;
+
 class OSDFaceData {
 public:
 	OSDFaceData()
@@ -50,7 +53,7 @@ class MyClosestPair {
 
 public:
 
-	typedef std::pair<std::pair<size_t, size_t>, float> DResult;
+	typedef std::pair<IndicesPairType, float> DResult;
 
 	MyClosestPair(const OSDFaceDataArrayType& data)
 	:_faceData(data){
@@ -181,7 +184,7 @@ private:
 
 void generate_face_data(OSDFaceDataArrayType& faceData)
 {
-	int point_num = 9;
+	int point_num = 10000;
 	int rangeS = 0;
 	int rangeE = 1;
 	srand(time(0));
@@ -194,7 +197,7 @@ void generate_face_data(OSDFaceDataArrayType& faceData)
 		faceData.back().init(i, Imath::Box2f(Imath::V2f((float)distr(generator), (float)distr(generator)),Imath::V2f((float)distr(generator), (float)distr(generator))));
 	}
 	std::cout << hboost::format("Time taken to initialize: \033[0;32m%fs\033[0m\n\n") % ((float)(clock() - tStart)/CLOCKS_PER_SEC);
-	std::cout << hboost::format("\nThere are \033[1;31m%d\033[0m points, whose coordinates are in the interval \033[1;31m[%d, %d]\033[0m.\n\n") % point_num % rangeS % rangeE;
+	std::cout << hboost::format("\nThere are \033[1;31m%d\033[0m bboxes, whose coordinates are in the interval \033[1;31m[%d, %d]\033[0m.\n\n") % point_num % rangeS % rangeE;
 }
 
 void get_point_indices_from_face_data(const OSDFaceDataArrayType& faceData,
@@ -206,9 +209,10 @@ void get_point_indices_from_face_data(const OSDFaceDataArrayType& faceData,
 	}
 }
 
-void remove_processed_indices(PointIndicesType& indicesData)
+void remove_processed_pair(const IndicesPairType& processedPair, PointIndicesType& indicesData)
 {
-
+	indicesData.erase(std::remove(indicesData.begin(), indicesData.end(), processedPair.first), indicesData.end());
+	indicesData.erase(std::remove(indicesData.begin(), indicesData.end(), processedPair.second), indicesData.end());
 }
 
 /**
@@ -216,6 +220,27 @@ void remove_processed_indices(PointIndicesType& indicesData)
  $ g++ -c merge_sort.cpp 2d_problem.cpp main.cpp && g++ merge_sort.o 2d_problem.o main.o -o my_program && ./my_program
  * */
 int main() {
+
+#if TEST_REMOVE_PAIR
+	PointIndicesType indicesData;
+	indicesData.push_back(3);
+	indicesData.push_back(1);
+	indicesData.push_back(4);
+	indicesData.push_back(5);
+	indicesData.push_back(9);
+	indicesData.push_back(2);
+	indicesData.push_back(6);
+
+	std::copy(indicesData.begin(), indicesData.end(), std::ostream_iterator<PointIndicesType::value_type>(std::cout, " "));
+	std::cout << std::endl;
+
+	IndicesPairType processed_pair(1,9);
+
+	remove_processed_pair(processed_pair, indicesData);
+
+	std::copy(indicesData.begin(), indicesData.end(), std::ostream_iterator<PointIndicesType::value_type>(std::cout, " "));
+	std::cout << std::endl;
+#else // TEST_REMOVE_PAIR
 	OSDFaceDataArrayType faceData;
 	PointIndicesType indicesData;
 
@@ -223,12 +248,16 @@ int main() {
 	get_point_indices_from_face_data(faceData,indicesData);
 	clock_t tStart = clock();
 	MyClosestPair cp(faceData);
-	std::cout << hboost::format("\npi.size(BEFORE) = %1%") % indicesData.size() << std::endl;
-	MyClosestPair::DResult res = cp.closestPair(indicesData);
-	std::cout << hboost::format("\npi.size(AFTER) = %1%") % indicesData.size() << std::endl;
-	std::cout << hboost::format("The closest pair of points is: \033[0;33m%s\033[0m and \033[0;33m%s\033[0m, with the distance \033[1;31m%f\033[0m.\n\n")
-        		  % res.first.first % res.first.second % res.second;
+	while (indicesData.size()>1) {
+		// std::cout << hboost::format("\npi.size(BEFORE) = %1%") % indicesData.size() << std::endl;
+		MyClosestPair::DResult res = cp.closestPair(indicesData);
+		remove_processed_pair(res.first,indicesData);
+		// std::cout << hboost::format("\npi.size(AFTER) = %1%") % indicesData.size() << std::endl;
+		// std::cout << hboost::format("The closest pair of points is: \033[0;33m%s\033[0m and \033[0;33m%s\033[0m, with the distance \033[1;31m%f\033[0m.\n\n")
+	    //    		  % res.first.first % res.first.second % res.second;
+	}
 	std::cout << hboost::format("Time taken: \033[0;32m%fs\033[0m\n\n") % ((float)(clock() - tStart)/CLOCKS_PER_SEC);
+#ifdef ENABLE_GNUPLOT
 	std::ofstream file, fres;
 	file.open("plot_struct.txt");
 	for (size_t p: indicesData) {
@@ -241,5 +270,8 @@ int main() {
 	fres.close();
 	// HDK's Qt breaks gnuplot
 	// system("gnuplot -e \"plot 'plot.txt' using 1:2 pt 7 ps 1 title 'Points', 'res.txt' using 1:2 pt 7 ps 1 lc rgb 'red' title 'Result'; pause -1\"");
+#endif // ENABLE_GNUPLOT
+#endif // TEST_REMOVE_PAIR
+
 	return 0;
 }
